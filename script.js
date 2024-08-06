@@ -1,6 +1,28 @@
+class Node {
+
+    constructor (walkable, pos) {
+
+        this.walkable = walkable
+        this.pos = pos
+
+        this.parent = null;
+
+        this.gCost = 0;
+        this.hCost = 0;
+    }
+
+    fCost () {
+        return gCost + hCost
+    }
+
+    equals(other) {
+        return this.pos[0] == other.pos[0] && this.pos[1] == other.pos[1];
+    }
+}
+
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-canvas.width = 3000;
+canvas.width = 2000;
 canvas.height = canvas.width;
 ctx.fillStyle = "black"
 ctx.fillRect(0,0,canvas.width, canvas.height)
@@ -43,7 +65,8 @@ function createMaze () {
 
     console.log("creation done!")
     path.push([2,2])
-    BFSsearch()
+    aStarSearch()
+    // BFSsearch()
 }
 
 function step (path, curr) {
@@ -136,30 +159,61 @@ function BFSsearch () {
     var stopTime = performance.now()
 
     console.log("search done in", stopTime-startTime, " milliseconds!")
+}
 
+
+function aStarSearch () {
+
+    console.log("starting search")
+
+    var startTime = performance.now()
+
+    path = aStar(new Node(true, curr), new Node(true, [blockCount-4, blockCount-4]))
+
+    if (path == undefined) {
+        console.log("no path found");
+    } else {
+        console.log(path);
+
+        for (let i=0; i < path.length; i++) {
+            matrix[path[i].pos[0]][path[i].pos[1]] = 2;
+        }
+    }
     
+
+    var stopTime = performance.now()
+
+    console.log("search done in", stopTime-startTime, " milliseconds")
+}
+
+function getNeighbors (node) {
+
+    let neighbors = []
+
+    if (matrix[node[0]][node[1]+1] == 1) {
+        neighbors.push([node[0], node[1]+1])
+    }
+    if (matrix[node[0]+1][node[1]] == 1) {
+        neighbors.push([node[0]+1, node[1]])
+    }
+    if (matrix[node[0]][node[1]-1] == 1) {
+        neighbors.push([node[0], node[1]-1])
+    }
+    if (matrix[node[0]-1][node[1]] == 1) {
+        neighbors.push([node[0]-1, node[1]])
+    }
+
+    return neighbors
 }
 
 function stepBFS (path) {
 
     // get neighbors that are white, and that arent grey
     // remove working guy, push neighbors to back
-    neighbors = []
     var curr = path.pop()
 
     // if in maze and not being processed
-    if (matrix[curr[0]][curr[1]+1] == 1) {
-        neighbors.push([curr[0], curr[1]+1])
-    }
-    if (matrix[curr[0]+1][curr[1]] == 1) {
-        neighbors.push([curr[0]+1, curr[1]])
-    }
-    if (matrix[curr[0]][curr[1]-1] == 1) {
-        neighbors.push([curr[0], curr[1]-1])
-    }
-    if (matrix[curr[0]-1][curr[1]] == 1) {
-        neighbors.push([curr[0]-1, curr[1]])
-    }
+    let neighbors = getNeighbors(curr);
 
     for (let i=0; i < neighbors.length; i++) {
         if (matrix[neighbors[i][0]][neighbors[i][1]] != 2) {
@@ -194,6 +248,81 @@ function drawMaze () {
                 ctx.fillStyle = "green"
             }
             ctx.fillRect(j*blockSize, i*blockSize, blockSize, blockSize)
+        }
+    }
+}
+
+// distance between two Nodes
+function getDistance(A, B) {
+
+    // console.log("A", A, " B", B);
+    // console.log("A pos", A.pos, " B pos", B.pos);
+
+    let deltaX = Math.abs(A.pos[0] - B.pos[0]);
+    let deltaY = Math.abs(A.pos[1] - B.pos[1]);
+
+    if (deltaX > deltaY) { return 14*deltaY + 10*(deltaX-deltaY); }
+    return 14*deltaX + 10*(deltaY-deltaX);
+}
+
+function aStar (start, target) {
+    
+    openSet = []
+    closedSet = []
+
+    // need to put gCost, hCost
+    openSet.push(start);
+
+    while (openSet.length > 0) {
+
+        let curr = openSet[0];
+
+        for (let i=0; i < openSet.length; i++) {
+            // if better path or equal check via hCost
+            // get node with lowest fCost
+            if (openSet[i].fCost < curr.fCost || (openSet[i].fCost == curr.fCost && openSet[i].hCost < curr.hCost)) {
+                curr = openSet[i];
+            }
+        }
+
+        openSet.splice(openSet.indexOf(curr), 1)
+        closedSet.push(curr)
+
+        // we got to target
+        if (curr.equals(target)) {
+            let path = []
+            while (!start.equals(curr)) {
+                path.push(curr.parent);
+                curr = curr.parent
+            }
+            return path;
+        }
+
+        // neighbors given by getNeighbors are already walkable
+        let neighbors = getNeighbors(curr.pos).map(o => new Node(true, o));
+
+        // 14 is diagonal move, 10 is for straight move
+        for (let i=0; i < neighbors.length; i++) {
+
+            if (closedSet.some(o => o.equals(neighbors[i]))) {
+                continue;
+            }
+
+            // distance from start + distance to neighbor
+            let newPathToNeighborCost = curr.gCost + getDistance(curr, neighbors[i]);
+
+            // if new path is a better path or neighbor was just discovered
+            if (newPathToNeighborCost < neighbors[i].gCost || !openSet.includes(neighbors[i])) {
+
+                neighbors[i].gCost = newPathToNeighborCost;
+                neighbors[i].hCost = getDistance(neighbors[i], target);
+                neighbors[i].parent = curr;
+
+                if (!openSet.includes(neighbors[i])) {
+                    // order doesn't matter, push vs unshift is the same here
+                    openSet.push(neighbors[i]);
+                }
+            }
         }
     }
 }
