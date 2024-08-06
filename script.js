@@ -1,15 +1,19 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-canvas.width = 800;
+canvas.width = 3000;
 canvas.height = canvas.width;
 ctx.fillStyle = "black"
 ctx.fillRect(0,0,canvas.width, canvas.height)
 
-let blockCount = 20;
-let blockSize = canvas.width / blockCount;
+let blockSize = 20;
+let blockCount = canvas.width / blockSize;
 let matrix = []
 
 window.requestAnimationFrame(run);
+
+let path = [[2,2]]
+let curr = [2,2]
+let end = [[blockCount-3, blockCount-3], [blockCount-4, blockCount-3], [blockCount-3, blockCount-4], [blockCount-4, blockCount-4]]
 
 initMatrix();
 createMaze();
@@ -30,20 +34,16 @@ function initMatrix() {
     }
 }
 
-let path = [[2,2]]
-let curr = [2,2]
 
 function createMaze () {
 
-    let drawingIntervalId = setInterval(() => {
-
+    while (path.length != 0) {
         path, curr = step(path, curr)
+    }
 
-        if (path.length == 0) {
-            console.log("done!")
-            clearInterval(drawingIntervalId)
-        }
-    }, 10)
+    console.log("creation done!")
+    path.push([2,2])
+    BFSsearch()
 }
 
 function step (path, curr) {
@@ -93,6 +93,84 @@ function step (path, curr) {
     return path, curr
 }
 
+function BFSsearchPretty () {
+
+    console.log("starting search")
+
+    let drawingIntervalId = setInterval(() => {
+
+        path = stepBFS(path)
+
+        var top = path.pop()
+        path.push(top)
+
+        if ((top[0] == end[0][0] && top[1] == end[0][1]) ||
+            (top[0] == end[1][0] && top[1] == end[1][1]) ||
+            (top[0] == end[2][0] && top[1] == end[2][1]) ||
+            (top[0] == end[3][0] && top[1] == end[3][1])) { 
+
+            console.log("search done!")
+            clearInterval(drawingIntervalId)
+        }
+    }, 1)
+}
+
+function BFSsearch () {
+
+    console.log("starting search")
+
+    var startTime = performance.now()
+
+    do {
+        
+        path = stepBFS(path)
+
+        var top = path.pop()
+        path.push(top)
+
+    } while(!((top[0] == end[0][0] && top[1] == end[0][1]) ||
+            (top[0] == end[1][0] && top[1] == end[1][1]) ||
+            (top[0] == end[2][0] && top[1] == end[2][1]) ||
+            (top[0] == end[3][0] && top[1] == end[3][1])))
+
+    var stopTime = performance.now()
+
+    console.log("search done in", stopTime-startTime, " milliseconds!")
+
+    
+}
+
+function stepBFS (path) {
+
+    // get neighbors that are white, and that arent grey
+    // remove working guy, push neighbors to back
+    neighbors = []
+    var curr = path.pop()
+
+    // if in maze and not being processed
+    if (matrix[curr[0]][curr[1]+1] == 1) {
+        neighbors.push([curr[0], curr[1]+1])
+    }
+    if (matrix[curr[0]+1][curr[1]] == 1) {
+        neighbors.push([curr[0]+1, curr[1]])
+    }
+    if (matrix[curr[0]][curr[1]-1] == 1) {
+        neighbors.push([curr[0], curr[1]-1])
+    }
+    if (matrix[curr[0]-1][curr[1]] == 1) {
+        neighbors.push([curr[0]-1, curr[1]])
+    }
+
+    for (let i=0; i < neighbors.length; i++) {
+        if (matrix[neighbors[i][0]][neighbors[i][1]] != 2) {
+            matrix[neighbors[i][0]][neighbors[i][1]] = 2;
+            path.unshift(neighbors[i]);
+        }
+    }
+
+    return path
+}
+
 function drawMaze () {
 
     // console.log(matrix)
@@ -101,6 +179,14 @@ function drawMaze () {
             
             if (matrix[i][j] == 1) {
                 ctx.fillStyle = "white";
+                if ((i == end[0][0] && j == end[0][1]) ||
+                    (i == end[1][0] && j == end[1][1]) ||
+                    (i == end[2][0] && j == end[2][1]) ||
+                    (i == end[3][0] && j == end[3][1])) { 
+                        ctx.fillStyle = "red"
+                }
+            } else if (matrix[i][j] == 2) {
+                ctx.fillStyle = "grey";
             } else {
                 ctx.fillStyle = "black";
             }
