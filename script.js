@@ -64,9 +64,10 @@ function createMaze () {
     }
 
     console.log("creation done!")
-    path.push([2,2])
-    aStarSearch()
-    // BFSsearch()
+    path = []
+    path.push(new Node(true, [2,2]))
+    // aStarSearch()
+    BFSsearch()
 }
 
 function step (path, curr) {
@@ -144,23 +145,113 @@ function BFSsearch () {
 
     var startTime = performance.now()
 
+    var top = null;
+
     do {
         
         path = stepBFS(path)
 
-        var top = path.pop()
+        top = path.pop()
         path.push(top)
 
-    } while(!((top[0] == end[0][0] && top[1] == end[0][1]) ||
-            (top[0] == end[1][0] && top[1] == end[1][1]) ||
-            (top[0] == end[2][0] && top[1] == end[2][1]) ||
-            (top[0] == end[3][0] && top[1] == end[3][1])))
+    } while(!((top.pos[0] == end[0][0] && top.pos[1] == end[0][1]) ||
+              (top.pos[0] == end[1][0] && top.pos[1] == end[1][1]) ||
+              (top.pos[0] == end[2][0] && top.pos[1] == end[2][1]) ||
+              (top.pos[0] == end[3][0] && top.pos[1] == end[3][1])))
 
     var stopTime = performance.now()
 
     console.log("search done in", stopTime-startTime, " milliseconds!")
+
+    while (top.pos != [2,2]) {
+        top = top.parent;
+        matrix[top.pos[0]][top.pos[1]] = 3;
+    }
 }
 
+function getNeighbors (node) {
+
+    let neighbors = []
+
+    if (matrix[node[0]][node[1]+1] == 1) {
+        neighbors.push(new Node(true, [node[0], node[1]+1]))
+    }
+    if (matrix[node[0]+1][node[1]] == 1) {
+        neighbors.push(new Node(true, [node[0]+1, node[1]]))
+    }
+    if (matrix[node[0]][node[1]-1] == 1) {
+        neighbors.push(new Node(true, [node[0], node[1]-1]))
+    }
+    if (matrix[node[0]-1][node[1]] == 1) {
+        neighbors.push(new Node(true, [node[0]-1, node[1]]))
+    }
+
+    return neighbors;
+}
+
+function stepBFS (path) {
+
+    // get neighbors that are white, and that arent grey
+    // remove working guy, push neighbors to back
+    var curr = path.pop()
+
+    // if in maze and not being processed
+    let neighbors = getNeighbors(curr.pos);
+
+    for (let i=0; i < neighbors.length; i++) {
+        if (matrix[neighbors[i].pos[0]][neighbors[i].pos[1]] != 2) {
+            matrix[neighbors[i].pos[0]][neighbors[i].pos[1]] = 2;
+            let n = neighbors[i];
+            n.parent = curr;
+            path.unshift(n);
+        }
+    }
+
+    return path
+}
+
+
+function drawMaze () {
+
+    // console.log(matrix)
+    for (let i=0; i < blockCount; i++) {
+        for (let j=0; j < blockCount; j++) {
+            
+            if (matrix[i][j] == 1) {
+                ctx.fillStyle = "white";
+                if ((i == end[0][0] && j == end[0][1]) ||
+                    (i == end[1][0] && j == end[1][1]) ||
+                    (i == end[2][0] && j == end[2][1]) ||
+                    (i == end[3][0] && j == end[3][1])) { 
+                        ctx.fillStyle = "red"
+                }
+            } else if (matrix[i][j] == 2) {
+                ctx.fillStyle = "grey";
+            } else if (matrix[i][j] == 3) {
+                ctx.fillStyle = "orange"
+            } else {
+                ctx.fillStyle = "black";
+            }
+            if (curr[0] == i && curr[1] == j) {
+                ctx.fillStyle = "green"
+            }
+            ctx.fillRect(j*blockSize, i*blockSize, blockSize, blockSize)
+        }
+    }
+}
+
+// distance between two Nodes
+function getDistance(A, B) {
+
+    // console.log("A", A, " B", B);
+    // console.log("A pos", A.pos, " B pos", B.pos);
+
+    let deltaX = Math.abs(A.pos[0] - B.pos[0]);
+    let deltaY = Math.abs(A.pos[1] - B.pos[1]);
+
+    if (deltaX > deltaY) { return 14*deltaY + 10*(deltaX-deltaY); }
+    return 14*deltaX + 10*(deltaY-deltaX);
+}
 
 function aStarSearch () {
 
@@ -184,85 +275,6 @@ function aStarSearch () {
     var stopTime = performance.now()
 
     console.log("search done in", stopTime-startTime, " milliseconds")
-}
-
-function getNeighbors (node) {
-
-    let neighbors = []
-
-    if (matrix[node[0]][node[1]+1] == 1) {
-        neighbors.push([node[0], node[1]+1])
-    }
-    if (matrix[node[0]+1][node[1]] == 1) {
-        neighbors.push([node[0]+1, node[1]])
-    }
-    if (matrix[node[0]][node[1]-1] == 1) {
-        neighbors.push([node[0], node[1]-1])
-    }
-    if (matrix[node[0]-1][node[1]] == 1) {
-        neighbors.push([node[0]-1, node[1]])
-    }
-
-    return neighbors
-}
-
-function stepBFS (path) {
-
-    // get neighbors that are white, and that arent grey
-    // remove working guy, push neighbors to back
-    var curr = path.pop()
-
-    // if in maze and not being processed
-    let neighbors = getNeighbors(curr);
-
-    for (let i=0; i < neighbors.length; i++) {
-        if (matrix[neighbors[i][0]][neighbors[i][1]] != 2) {
-            matrix[neighbors[i][0]][neighbors[i][1]] = 2;
-            path.unshift(neighbors[i]);
-        }
-    }
-
-    return path
-}
-
-function drawMaze () {
-
-    // console.log(matrix)
-    for (let i=0; i < blockCount; i++) {
-        for (let j=0; j < blockCount; j++) {
-            
-            if (matrix[i][j] == 1) {
-                ctx.fillStyle = "white";
-                if ((i == end[0][0] && j == end[0][1]) ||
-                    (i == end[1][0] && j == end[1][1]) ||
-                    (i == end[2][0] && j == end[2][1]) ||
-                    (i == end[3][0] && j == end[3][1])) { 
-                        ctx.fillStyle = "red"
-                }
-            } else if (matrix[i][j] == 2) {
-                ctx.fillStyle = "grey";
-            } else {
-                ctx.fillStyle = "black";
-            }
-            if (curr[0] == i && curr[1] == j) {
-                ctx.fillStyle = "green"
-            }
-            ctx.fillRect(j*blockSize, i*blockSize, blockSize, blockSize)
-        }
-    }
-}
-
-// distance between two Nodes
-function getDistance(A, B) {
-
-    // console.log("A", A, " B", B);
-    // console.log("A pos", A.pos, " B pos", B.pos);
-
-    let deltaX = Math.abs(A.pos[0] - B.pos[0]);
-    let deltaY = Math.abs(A.pos[1] - B.pos[1]);
-
-    if (deltaX > deltaY) { return 14*deltaY + 10*(deltaX-deltaY); }
-    return 14*deltaX + 10*(deltaY-deltaX);
 }
 
 function aStar (start, target) {
